@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>My erc20</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+
+    <script src='https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js'></script>
+</head>
+
+<body>
+Your vesting wallets:<br> <span id="vesting_wallets" style="white-space:pre-wrap;">Loading...</span><br><br>
+
+Release eth from all your wallets:<br>
+<form onsubmit="release_eth();return false;">
+    <input type="submit" value="Release!"><br>
+</form>
+Release result:<span id="release_eth_result"></span><br><br>
+
+Release tokens from all your wallets:<br>
+<form onsubmit="release_tokens();return false;">
+    <label for="token">Token contract address</label><br>
+    <input type="text" id="token" required><br>
+    <input type="submit" value="Release!"><br>
+</form>
+Release result:<span id="release_tokens_result"></span><br><br>
+
+Status: <span id="status">Loading...</span><br>
+
+<script type="text/javascript">
+    async function loadWeb3() {
+        if (window.ethereum) {
+            window.web3 = new Web3(window.ethereum);
+            window.ethereum.enable();
+        }
+        else {
+            console.log(window.ethereum);
+            console.log("no ether");
+        }
+    }
+
+    async function loadContract() {
+        return new window.web3.eth.Contract([
+            {
+                "inputs": [],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "beneficiaryAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "startTimestamp",
+                        "type": "uint64"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "durationSeconds",
+                        "type": "uint64"
+                    }
+                ],
+                "name": "createVestingWallet",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "beneficiaryAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint64",
+                        "name": "durationSeconds",
+                        "type": "uint64"
+                    }
+                ],
+                "name": "createVestingWallet",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "beneficiaryAddress",
+                        "type": "address"
+                    }
+                ],
+                "name": "getBeneficaryWallets",
+                "outputs": [
+                    {
+                        "internalType": "contract VestingWallet[]",
+                        "name": "",
+                        "type": "address[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getManagerWallets",
+                "outputs": [
+                    {
+                        "internalType": "contract VestingWallet[]",
+                        "name": "",
+                        "type": "address[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "beneficiaryAddress",
+                        "type": "address"
+                    }
+                ],
+                "name": "release",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "beneficiaryAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "token",
+                        "type": "address"
+                    }
+                ],
+                "name": "release",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "contract VestingWallet",
+                        "name": "walletAddress",
+                        "type": "address"
+                    }
+                ],
+                "name": "withdraw",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "contract VestingWallet",
+                        "name": "walletAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "token",
+                        "type": "address"
+                    }
+                ],
+                "name": "withdraw",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ], '0xeBbE0f7613E09Fac0568871e98B465f82E2c4450');
+    }
+
+    async function load() {
+        await loadWeb3();
+        window.contract = await loadContract();
+        updateStatus('Ready!');
+    }
+
+    async function getCurrentAccount() {
+        const accounts = await window.web3.eth.getAccounts();
+        return accounts[0];
+    }
+
+    function updateStatus(status) {
+        const statusEl = document.getElementById('status');
+        statusEl.innerHTML = status;
+        console.log(status);
+    }
+
+    function updateElById(id, value) {
+        const playersEl = document.getElementById(id);
+        playersEl.innerHTML = value;
+    }
+
+
+    async function updateVestingWallets() {
+        const account = await getCurrentAccount();
+        const vestingWallets = await window.contract.methods.getBeneficaryWallets(account).call();
+        updateElById('vesting_wallets', vestingWallets.join('\r\n'));
+    }
+
+    async function release_eth() {
+        const account = await getCurrentAccount();
+        try {
+            await window.contract.methods.release(account).send({from: account});
+            updateElById('release_eth_result', 'Success');
+        } catch (e) {
+            console.log(e);
+            updateElById('release_eth_result', 'Failure(');
+        }
+    }
+
+    async function release_tokens() {
+        const account = await getCurrentAccount();
+        const token = document.getElementById('token').value;
+
+        try {
+            await window.contract.methods.release(account, token).send({from: account});
+            updateElById('release_tokens_result', 'Success');
+        } catch (e) {
+            console.log(e);
+            updateElById('release_tokens_result', 'Failure(');
+        }
+    }
+
+    async function preparePage() {
+        await load();
+        setInterval(updateVestingWallets, 3000);
+    }
+
+    preparePage();
+
+</script>
+</body>
+
+</html>
